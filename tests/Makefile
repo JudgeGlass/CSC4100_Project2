@@ -1,3 +1,4 @@
+SHELL := /bin/bash
 TESTS = examples threads p1 userprog p2 vm p3 filesys p4
 
 PATH := $(shell pwd)/../src/utils:$(PATH)
@@ -71,7 +72,7 @@ examples::
 # Tests for the reference solutions.
 p1 p2 p3 p4::
 	$(mk-sandbox)
-	$(apply-patch)
+# $(apply-patch)
 	$(run-tests)
 	$(grade-tests)
 	$(test-clean)

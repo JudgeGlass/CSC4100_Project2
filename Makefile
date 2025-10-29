@@ -1,5 +1,5 @@
 CLEAN_SUBDIRS = src doc tests
-PINTOS_BASE=~/pintos/src/
+PINTOS_BASE=~/pintos_build/src/
 DOCKER_EXEC=docker exec -it pintos bash -c 
 PINTOS=/home/PKUOS/toolchain/x86_64/bin/pintos
 
@@ -10,9 +10,9 @@ clean::
 	for d in $(CLEAN_SUBDIRS); do $(MAKE) -C $$d $@; done
 
 docker:
-	docker run -it -d --rm --name pintos --mount type=bind,source=$(shell pwd)/../pintos/,target=/home/PKUOS/pintos pkuflyingpig/pintos bash
+	docker run -it -d --rm --name pintos -v $(shell pwd)/:/home/PKUOS/pintos_build pkuflyingpig/pintos bash
 	$(DOCKER_EXEC) 'rm ~/toolchain/x86_64/bin/pintos'
-	$(DOCKER_EXEC) 'ln -s ~/pintos/src/utils/pintos ~/toolchain/x86_64/bin/pintos'
+	$(DOCKER_EXEC) 'ln -s ~/pintos_build/src/utils/pintos ~/toolchain/x86_64/bin/pintos'
 
 docker-stop:
 	docker container stop pintos
