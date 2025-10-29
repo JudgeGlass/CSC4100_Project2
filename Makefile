@@ -52,5 +52,8 @@ docker-clean:
 distclean:: clean
 	find . -name '*~' -exec rm '{}' \;
 
+docker-check:
+	$(DOCKER_EXEC) 'cd $(PINTOS_BASE)/..; make check'
+
 check::
 	$(MAKE) -C tests $@
