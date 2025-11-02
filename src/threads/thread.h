@@ -10,6 +10,7 @@ enum thread_status {
   THREAD_RUNNING, /* Running thread. */
   THREAD_READY,   /* Not running but ready to run. */
   THREAD_BLOCKED, /* Waiting for an event to trigger. */
+  THREAD_WAITING,
   THREAD_DYING    /* About to be destroyed. */
 };
 
@@ -100,6 +101,15 @@ struct thread {
   unsigned magic; /* Detects stack overflow. */
 };
 
+struct thread_wait_entry
+{
+   struct list_elem elem;
+   struct thread *thread;
+   int64_t tick_amount;
+   int64_t start_ticks;
+   int64_t end_ticks;
+};
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -116,6 +126,9 @@ tid_t thread_create(const char *name, int priority, thread_func *, void *);
 
 void thread_block(void);
 void thread_unblock(struct thread *);
+
+void thread_wait(struct thread_wait_entry* wait_entry);
+void thread_check_wait(void);
 
 struct thread *thread_current(void);
 tid_t thread_tid(void);

@@ -88,12 +88,13 @@ timer_elapsed (int64_t then)
    be turned on. */
 void
 timer_sleep (int64_t ticks) 
-{
+{ 
   int64_t start = timer_ticks ();
 
-  ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+  struct thread_wait_entry wait_entry;
+  wait_entry.tick_amount = ticks;
+  wait_entry.thread = thread_current();
+  thread_wait(&wait_entry);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
