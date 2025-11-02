@@ -24,6 +24,8 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+static struct list wait_list;
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -49,6 +51,7 @@ struct kernel_thread_frame
 static long long idle_ticks;   /* # of timer ticks spent idle. */
 static long long kernel_ticks; /* # of timer ticks in kernel threads. */
 static long long user_ticks;   /* # of timer ticks in user programs. */
+static long long wait_ticks;
 
 /* Scheduling. */
 #define TIME_SLICE 4          /* # of timer ticks to give each thread. */
@@ -90,6 +93,7 @@ void thread_init(void)
 
   lock_init(&tid_lock);
   list_init(&ready_list);
+  list_init(&wait_list);
   list_init(&all_list);
 
   /* Set up a thread structure for the running thread. */
@@ -130,6 +134,8 @@ void thread_tick(void)
 #endif
   else
     kernel_ticks++;
+
+  wait_ticks++;
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
@@ -229,10 +235,41 @@ void thread_unblock(struct thread *t)
   ASSERT(is_thread(t));
 
   old_level = intr_disable();
-  ASSERT(t->status == THREAD_BLOCKED);
+  ASSERT(t->status == THREAD_BLOCKED || t->status == THREAD_WAITING);
   list_push_back(&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level(old_level);
+}
+
+void thread_wait(struct thread_wait_entry* wait_entry)
+{
+  wait_entry->start_ticks = wait_ticks - 1;
+  wait_entry->end_ticks = wait_entry->start_ticks + wait_entry->tick_amount;
+  struct thread *thrd = wait_entry->thread;
+  enum intr_level old_level;
+  ASSERT(thrd->status == THREAD_RUNNING);
+  thrd->status = THREAD_WAITING;
+
+  list_push_back(&wait_list, wait_entry);
+  old_level = intr_disable();
+  schedule();
+  intr_set_level(old_level);
+}
+
+void thread_check_wait(void)
+{
+  int64_t current_tick = kernel_ticks;
+  struct list_elem *e;
+  for (e = list_begin(&wait_list); e != list_end(&wait_list); e = list_next(e))
+  {
+    struct thread_wait_entry *t = list_entry(e, struct thread_wait_entry, elem);
+    
+    if(t->end_ticks <= wait_ticks)
+    {
+      thread_unblock(t->thread);
+      list_remove(e);
+    }
+  }
 }
 
 /* Returns the name of the running thread. */
@@ -499,7 +536,7 @@ void thread_schedule_tail(struct thread *prev)
 {
   struct thread *cur = running_thread();
 
-  ASSERT(intr_get_level() == INTR_OFF);
+ ASSERT(intr_get_level() == INTR_OFF);
 
   /* Mark us as running. */
   cur->status = THREAD_RUNNING;
@@ -537,6 +574,8 @@ schedule(void)
   struct thread *cur = running_thread();
   struct thread *next = next_thread_to_run();
   struct thread *prev = NULL;
+
+  thread_check_wait();
 
   ASSERT(intr_get_level() == INTR_OFF);
   ASSERT(cur->status != THREAD_RUNNING);
