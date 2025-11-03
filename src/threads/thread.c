@@ -276,7 +276,7 @@ void thread_unblock(struct thread *t)
 
 void thread_wait(struct thread_wait_entry* wait_entry)
 {
-  wait_entry->start_ticks = wait_ticks;
+  wait_entry->start_ticks = wait_ticks - 1;
   wait_entry->end_ticks = wait_entry->start_ticks + wait_entry->tick_amount;
   // printf("HUNTER - TICK_AMT: %d\n", wait_entry->tick_amount);
   // printf("Hunter - THRD: %d\n", wait_entry->thread->tid);

@@ -90,7 +90,6 @@ void
 timer_sleep (int64_t ticks) 
 { 
   if(ticks <= 0) return;
-  printf("HUNTER - TICKS: %d ", ticks);
   int64_t start = timer_ticks ();
 
   struct thread_wait_entry wait_entry;
