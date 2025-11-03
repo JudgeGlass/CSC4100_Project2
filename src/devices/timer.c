@@ -89,6 +89,8 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 { 
+  if(ticks <= 0) return;
+  printf("HUNTER - TICKS: %d ", ticks);
   int64_t start = timer_ticks ();
 
   struct thread_wait_entry wait_entry;
@@ -172,6 +174,20 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
+  
+  // This should update load_avg and recent_cpu every 1 second
+  if(ticks % TIMER_FREQ == 0)
+  {
+    thread_update_load_avg();
+    thread_update_recent_cpu();
+  }
+
+  // This should update the threads priority every 4 ticks
+  if(ticks % 4 == 0)
+  {
+    thread_update_priority();
+  }
+  
   thread_tick ();
 }
 

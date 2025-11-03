@@ -92,6 +92,9 @@ struct thread {
   /* Shared between thread.c and synch.c. */
   struct list_elem elem; /* List element. */
 
+  int nice;
+  int recent_cpu;
+
 #ifdef USERPROG
   /* Owned by userprog/process.c. */
   uint32_t *pagedir; /* Page directory. */
@@ -143,6 +146,12 @@ void thread_foreach(thread_action_func *, void *);
 
 int thread_get_priority(void);
 void thread_set_priority(int);
+
+void thread_add_current_to_priority_list(void);
+void thread_update_load_avg(void);
+void thread_update_recent_cpu(void);
+void thread_update_priority(void);
+int thread_get_highest_priority(void);
 
 int thread_get_nice(void);
 void thread_set_nice(int);
