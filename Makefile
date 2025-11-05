@@ -10,7 +10,7 @@ clean::
 	for d in $(CLEAN_SUBDIRS); do $(MAKE) -C $$d $@; done
 
 docker:
-	docker run -it -d --rm --name pintos -v $(shell pwd)/:/home/PKUOS/pintos_build pkuflyingpig/pintos bash
+	docker run -it -d --rm --name pintos -p 1234:1234 -v $(shell pwd)/:/home/PKUOS/pintos_build pkuflyingpig/pintos bash
 	$(DOCKER_EXEC) 'rm ~/toolchain/x86_64/bin/pintos'
 	$(DOCKER_EXEC) 'ln -s ~/pintos_build/src/utils/pintos ~/toolchain/x86_64/bin/pintos'
 
@@ -51,6 +51,9 @@ docker-clean:
 
 distclean:: clean
 	find . -name '*~' -exec rm '{}' \;
+
+docker-debug-threads: threads
+	$(DOCKER_EXEC) 'cd $(PINTOS_BASE)/threads/build; $(PINTOS) --gdb -- run $(TEST)'
 
 docker-check:
 	$(DOCKER_EXEC) 'cd $(PINTOS_BASE)/..; make check'
