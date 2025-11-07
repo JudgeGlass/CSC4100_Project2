@@ -55,6 +55,9 @@ distclean:: clean
 docker-debug-threads: threads
 	$(DOCKER_EXEC) 'cd $(PINTOS_BASE)/threads/build; $(PINTOS) --gdb -- run $(TEST)'
 
+docker-test-threads: threads
+	$(DOCKER_EXEC) 'cd $(PINTOS_BASE)/threads/build; $(PINTOS) -- run $(TEST)'
+
 docker-check:
 	$(DOCKER_EXEC) 'cd $(PINTOS_BASE)/..; make check'
 

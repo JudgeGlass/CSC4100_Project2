@@ -3,6 +3,7 @@
   "files.associations": {
     "thread.h": "c",
     "ranges": "c",
-    "memory_resource": "c"
+    "memory_resource": "c",
+    "numbers": "c"
   }
 }
