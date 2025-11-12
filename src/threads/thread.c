@@ -110,6 +110,13 @@ static void insert_ready_list(struct thread *thrd)
   list_insert (e, &thrd->elem);
 }
 
+bool cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux)
+{ 
+  struct thread *thrd1 = list_entry(l1,struct thread,elem);
+  struct thread *thrd2 = list_entry(l2,struct thread,elem);
+  return thrd1 > thrd2;
+}
+
 static int get_num_ready_processes(void)
 {
   return list_size(&priority_lists);
@@ -292,10 +299,14 @@ void thread_unblock(struct thread *t)
   ASSERT(t->status == THREAD_BLOCKED || t->status == THREAD_WAITING);
   //list_push_back(&ready_list, &t->elem);
   //list_push_back(&priority_lists[t->priority], &t->elem);
-  insert_ready_list(t);
+  
+  insert_ready_list(t);  
+  // list_insert_ordered(&priority_lists, &t->elem, cmp_priority, 0);
   t->status = THREAD_READY;
+  //thread_yield();
   
   intr_set_level(old_level);
+  
 }
 
 void thread_wait(struct thread_wait_entry* wait_entry)
@@ -310,7 +321,7 @@ void thread_wait(struct thread_wait_entry* wait_entry)
   thrd->status = THREAD_WAITING;
 
   old_level = intr_disable();
-  list_push_back(&wait_list, wait_entry);
+  list_push_back(&wait_list, &wait_entry->elem);
   schedule();
   intr_set_level(old_level);
 }
@@ -352,7 +363,7 @@ thread_current(void)
      of stack, so a few big automatic arrays or moderate
      recursion can cause stack overflow. */
   ASSERT(is_thread(t));
-  // ASSERT(t->status != THREAD_BLOCKED);
+  //ASSERT(t->status != THREAD_BLOCKED);
   ASSERT(t->status == THREAD_RUNNING);
 
   return t;
@@ -397,6 +408,7 @@ void thread_yield(void)
   if (cur != idle_thread)
     //list_push_back(&priority_lists[cur->priority], &cur->elem);
     insert_ready_list(cur);
+    // list_insert_ordered(&priority_lists, &cur->elem, cmp_priority, 0);
     //list_push_back(&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule();
@@ -424,6 +436,7 @@ void thread_add_current_to_priority_list(void)
   struct thread *current_thrd = thread_current();
   //list_push_back(&priority_lists[current_thrd->priority], &current_thrd->elem);
   insert_ready_list(current_thrd);
+  // list_insert_ordered(&priority_lists, &current_thrd->elem, cmp_priority, 0);
 }
 
 void thread_update_load_avg(void)

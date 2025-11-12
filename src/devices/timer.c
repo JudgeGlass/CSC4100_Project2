@@ -181,7 +181,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   //   thread_update_recent_cpu();
   // }
 
-  // This should update the threads priority every 4 ticks
+  // // This should update the threads priority every 4 ticks
   // if(ticks % 4 == 0)
   // {
   //   thread_update_priority();
