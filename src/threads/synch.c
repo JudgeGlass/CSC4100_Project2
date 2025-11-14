@@ -216,7 +216,9 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
+  //make a list/array for priority donation that tracks if process is donate
+  //check if process holding lock has lower priority then self
+  // if so make it's effective priority the same as self.
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }
@@ -251,7 +253,7 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
+  //check if donated to, if so remove effective priority (set back to base)
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
