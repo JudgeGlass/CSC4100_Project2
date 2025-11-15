@@ -4,6 +4,7 @@
     "thread.h": "c",
     "ranges": "c",
     "memory_resource": "c",
-    "numbers": "c"
+    "numbers": "c",
+    "process.h": "c"
   }
 }

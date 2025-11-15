@@ -92,8 +92,11 @@ struct thread {
   /* Shared between thread.c and synch.c. */
   struct list_elem elem; /* List element. */
 
-  int nice;
-  int recent_cpu;
+  int priorities[9];
+  int size;
+  int donation_no;
+  struct lock *waiting_for;
+  int64_t wakeup_time;
 
 #ifdef USERPROG
   /* Owned by userprog/process.c. */
@@ -152,6 +155,8 @@ void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
+void search_array(struct thread *cur,int elem);
 bool cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux);
+void thread_refresh_ready_list(void);
 
 #endif /* threads/thread.h */

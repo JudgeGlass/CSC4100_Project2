@@ -133,6 +133,7 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)) {
+    list_sort(&sema->waiters, cmp_priority, 0);
     thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
   }
@@ -200,6 +201,7 @@ lock_init (struct lock *lock)
 
   lock->holder = NULL;
   sema_init (&lock->semaphore, 1);
+  lock->is_donated = false;
 }
 
 /* Acquires LOCK, sleeping until it becomes available if
@@ -216,11 +218,30 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-  //make a list/array for priority donation that tracks if process is donate
-  //check if process holding lock has lower priority then self
-  // if so make it's effective priority the same as self.
+  if(lock->holder != NULL)
+  {
+    thread_current()->waiting_for= lock;
+    if(lock->holder->priority < thread_current()->priority)
+    {  struct thread *temp=thread_current();
+       while(temp->waiting_for!=NULL)
+       {
+         struct lock *cur_lock=temp->waiting_for;
+         cur_lock->holder->priorities[cur_lock->holder->size] = temp->priority;
+         cur_lock->holder->size+=1;
+         cur_lock->holder->priority = temp->priority;
+         if(cur_lock->holder->status == THREAD_READY)
+           break;
+         temp=cur_lock->holder;
+       }
+       if(!lock->is_donated)
+         lock->holder->donation_no +=1;
+       lock->is_donated = true;
+       thread_refresh_ready_list();
+    }
+  }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
+  lock->holder->waiting_for=NULL;
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -253,7 +274,23 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-  //check if donated to, if so remove effective priority (set back to base)
+
+  struct semaphore *lock_sema=&lock->semaphore;
+  list_sort(&lock_sema->waiters, cmp_priority, 0);
+
+  if (lock->is_donated)
+  {
+    thread_current()->donation_no -=1;
+    int elem=list_entry (list_front (&lock_sema->waiters),struct thread, elem)->priority;
+    search_array(thread_current(),elem);
+    thread_current()->priority = thread_current()->priorities[(thread_current()->size)-1];
+    lock->is_donated = false;
+  }
+  if(thread_current()->donation_no ==0)
+  {
+    thread_current()-> size=1;
+    thread_current()-> priority = thread_current()->priorities[0];
+  }
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }

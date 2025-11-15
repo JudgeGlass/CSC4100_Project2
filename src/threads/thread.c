@@ -101,7 +101,12 @@ bool cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux)
 { 
   struct thread *thrd1 = list_entry(l1,struct thread,elem);
   struct thread *thrd2 = list_entry(l2,struct thread,elem);
-  return thrd1 > thrd2;
+  return (thrd1->priority > thrd2->priority); 
+}
+
+void thread_refresh_ready_list(void)
+{
+  list_sort(&priority_lists, cmp_priority, 0);
 }
 
 static int get_num_ready_processes(void)
@@ -130,7 +135,6 @@ void thread_init(void)
   list_init(&wait_list);
   list_init(&all_list);
   list_init(&priority_lists);
-  sema_init(&update_priority, 0);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread();
@@ -172,8 +176,6 @@ void thread_tick(void)
     kernel_ticks++;
 
   wait_ticks++;
-  
-  t->recent_cpu++;
 
   /* Enforce preemption. */
   if (++thread_ticks >= TIME_SLICE)
@@ -415,11 +417,11 @@ int thread_get_highest_priority(void)
 void thread_set_priority(int new_priority)
 {
   ASSERT(new_priority < PRI_MAX && new_priority >= PRI_MIN);
-  int highest_pri = thread_get_highest_priority();
 
-  thread_current()->priority = new_priority;
-  if(new_priority < highest_pri)
-  {
+  thread_current()->priorities[0] = new_priority;
+  if(thread_current()->size==1)
+  { 
+    thread_current ()->priority = new_priority;
     thread_yield();
   }
 }
@@ -433,7 +435,7 @@ int thread_get_priority(void)
 /* Sets the current thread's nice value to NICE. */
 void thread_set_nice(int nice)
 {
-  thread_current()->nice = nice;
+  
 }
 
 /* Returns the current thread's nice value. */
@@ -544,6 +546,11 @@ init_thread(struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *)t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+
+  t->donation_no=0;
+  t->priorities[0] = priority;
+  t->waiting_for = NULL;
+  t->size = 1;
 
   old_level = intr_disable();
   list_push_back(&all_list, &t->allelem);
@@ -662,3 +669,19 @@ allocate_tid(void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
+
+void search_array(struct thread *cur,int elem)
+{ int found=0;
+  for(int i=0;i<(cur->size)-1;i++)
+  {
+  if(cur->priorities[i]==elem)
+    {
+     found=1;
+    }
+  if(found==1)
+    {
+     cur->priorities[i]=cur->priorities[i+1];
+    }
+  }
+  cur->size -=1;
+}
