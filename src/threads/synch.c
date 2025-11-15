@@ -318,7 +318,6 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
   
   sema_init (&waiter.semaphore, 0);
-  // list_push_back (&cond->waiters, &waiter.elem);
   struct thread *thrd = list_entry(&waiter.elem, struct thread, elem);
   insert_wait_list(&cond->waiters, thrd);
   lock_release (lock);

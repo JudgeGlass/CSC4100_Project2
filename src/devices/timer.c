@@ -174,19 +174,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   
-  // // This should update load_avg and recent_cpu every 1 second
-  // if(ticks % TIMER_FREQ == 0)
-  // {
-  //   thread_update_load_avg();
-  //   thread_update_recent_cpu();
-  // }
-
-  // // This should update the threads priority every 4 ticks
-  // if(ticks % 4 == 0)
-  // {
-  //   thread_update_priority();
-  // }
-  
   thread_tick ();
   thread_check_wait();
 }
