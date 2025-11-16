@@ -78,8 +78,29 @@ static tid_t allocate_tid(void);
 
 static struct semaphore update_priority;
 
-static void insert_ready_list(struct thread *thrd)
+void thread_remove_temp_priority(struct thread *cur, int temp_priority)
 {
+  // Iterate through the array to find the element
+  for (int i = 0; i < cur->temp_priorities_size; i++)
+  {
+    if (cur->temp_priorities[i] == temp_priority)
+    {
+      // Shift the elements to the left, starting from the found element
+      for (int j = i; j < cur->temp_priorities_size - 1; j++)
+      {
+          cur->temp_priorities[j] = cur->temp_priorities[j + 1];
+      }
+      // Decrease the amount of temp priorities
+      cur->temp_priorities_size--;
+      // Break since we have already shifted the elements
+      break;
+    }
+  }
+}
+
+static void thread_insert_ready_list(struct thread *thrd)
+{
+  // Inserts thread into the priority list based on its priority
   struct list_elem *e;// = list_front(&priority_lists);
   for (e = list_begin (&priority_lists); e != list_end (&priority_lists); e = list_next (e))
   {
@@ -88,6 +109,7 @@ static void insert_ready_list(struct thread *thrd)
 
     if(thrd->priority > curr_thrd->priority) // NEW PRI > CURR PRI
       break;
+    // Insert at the end of already existing priority (eg. new thread is 4, so 2 3 4 4 >x< 7)
     if(curr_thrd->priority == thrd->priority && thrd->priority > next_thrd->priority) // FIFO
     {
       e = list_next(e);
@@ -97,7 +119,7 @@ static void insert_ready_list(struct thread *thrd)
   list_insert (e, &thrd->elem);
 }
 
-bool cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux)
+bool thread_cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux)
 { 
   struct thread *thrd1 = list_entry(l1,struct thread,elem);
   struct thread *thrd2 = list_entry(l2,struct thread,elem);
@@ -106,7 +128,7 @@ bool cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux)
 
 void thread_refresh_ready_list(void)
 {
-  list_sort(&priority_lists, cmp_priority, 0);
+  list_sort(&priority_lists, thread_cmp_priority, NULL);
 }
 
 static int get_num_ready_processes(void)
@@ -175,6 +197,7 @@ void thread_tick(void)
   else
     kernel_ticks++;
 
+  // Used for time_sleep
   wait_ticks++;
 
   /* Enforce preemption. */
@@ -242,6 +265,7 @@ tid_t thread_create(const char *name, int priority,
   /* Add to run queue. */
   thread_unblock(t);
 
+  // Check if new thread is higher priority than currently running one
   if(list_size(&priority_lists) > 0)
   {
     if(thread_current()->priority < thread_get_highest_priority())
@@ -285,7 +309,7 @@ void thread_unblock(struct thread *t)
   old_level = intr_disable();
   ASSERT(t->status == THREAD_BLOCKED || t->status == THREAD_WAITING);
   
-  insert_ready_list(t);  
+  thread_insert_ready_list(t);  
   t->status = THREAD_READY;
   
   intr_set_level(old_level);
@@ -293,13 +317,16 @@ void thread_unblock(struct thread *t)
 
 void thread_wait(struct thread_wait_entry* wait_entry)
 {
+  // Create thread wait entry
   wait_entry->start_ticks = wait_ticks;
   wait_entry->end_ticks = wait_entry->start_ticks + wait_entry->tick_amount;
   struct thread *thrd = wait_entry->thread;
+  
   enum intr_level old_level;
   ASSERT(thrd->status == THREAD_RUNNING);
   thrd->status = THREAD_WAITING;
 
+  // Add wait entry to the wait list and schedule next thread
   old_level = intr_disable();
   list_push_back(&wait_list, &wait_entry->elem);
   schedule();
@@ -308,6 +335,7 @@ void thread_wait(struct thread_wait_entry* wait_entry)
 
 void thread_check_wait(void)
 {
+  // Loop through every thread in the wait list and check if its ticks have expired
   int64_t current_tick = wait_ticks;
   struct list_elem *e;
   for (e = list_begin(&wait_list); e != list_end(&wait_list); e = list_next(e))
@@ -316,6 +344,7 @@ void thread_check_wait(void)
     
     if(t->end_ticks <= current_tick)
     {
+      // "Wake up" thread
       thread_unblock(t->thread);
       list_remove(e);
     }
@@ -385,7 +414,7 @@ void thread_yield(void)
 
   old_level = intr_disable();
   if (cur != idle_thread)
-    insert_ready_list(cur);
+    thread_insert_ready_list(cur);
   cur->status = THREAD_READY;
   schedule();
   intr_set_level(old_level);
@@ -409,6 +438,7 @@ void thread_foreach(thread_action_func *func, void *aux)
 
 int thread_get_highest_priority(void)
 {
+  // Returns the highest priority (the thread at front of priority_list)
   struct thread *front = list_entry(list_begin(&priority_lists), struct thread, elem);
   return front->priority;
 }
@@ -416,12 +446,16 @@ int thread_get_highest_priority(void)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
+  struct thread *cur = thread_current();
   ASSERT(new_priority < PRI_MAX && new_priority >= PRI_MIN);
 
-  thread_current()->priorities[0] = new_priority;
-  if(thread_current()->size==1)
+  // Set the temp priority[0] to the new priority
+  cur->temp_priorities[0] = new_priority;
+  
+  // If there is only one priority for the current thread, yield to any other higher priority thread(s)
+  if(cur->temp_priorities_size == 1)
   { 
-    thread_current ()->priority = new_priority;
+    cur->priority = new_priority;
     thread_yield();
   }
 }
@@ -547,10 +581,10 @@ init_thread(struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-  t->donation_no=0;
-  t->priorities[0] = priority;
+  t->num_donations=0;
+  t->temp_priorities[0] = priority;
   t->waiting_for = NULL;
-  t->size = 1;
+  t->temp_priorities_size = 1;
 
   old_level = intr_disable();
   list_push_back(&all_list, &t->allelem);
@@ -669,19 +703,3 @@ allocate_tid(void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
-
-void search_array(struct thread *cur,int elem)
-{ int found=0;
-  for(int i=0;i<(cur->size)-1;i++)
-  {
-  if(cur->priorities[i]==elem)
-    {
-     found=1;
-    }
-  if(found==1)
-    {
-     cur->priorities[i]=cur->priorities[i+1];
-    }
-  }
-  cur->size -=1;
-}

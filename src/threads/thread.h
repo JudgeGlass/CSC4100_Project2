@@ -19,7 +19,7 @@ enum thread_status {
 typedef int tid_t;
 #define TID_ERROR ((tid_t) - 1) /* Error value for tid_t. */
 
-/* Thread priorities. */
+/* Thread temp_priorities. */
 #define PRI_MIN 0      /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63     /* Highest priority. */
@@ -92,11 +92,10 @@ struct thread {
   /* Shared between thread.c and synch.c. */
   struct list_elem elem; /* List element. */
 
-  int priorities[9];
-  int size;
-  int donation_no;
+  int temp_priorities[8];
+  int temp_priorities_size;
+  int num_donations;
   struct lock *waiting_for;
-  int64_t wakeup_time;
 
 #ifdef USERPROG
   /* Owned by userprog/process.c. */
@@ -155,8 +154,8 @@ void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
-void search_array(struct thread *cur,int elem);
-bool cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux);
+void thread_remove_temp_priority(struct thread *cur,int elem);
+bool thread_cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux);
 void thread_refresh_ready_list(void);
 
 #endif /* threads/thread.h */

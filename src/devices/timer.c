@@ -89,12 +89,15 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 { 
-  if(ticks <= 0) return;
+  if(ticks <= 0) return; // Sleeping for <= 0 makes no sense
   int64_t start = timer_ticks ();
 
+  // Create wait entry
   struct thread_wait_entry wait_entry;
   wait_entry.tick_amount = ticks;
   wait_entry.thread = thread_current();
+
+  // Add current thread to wait list
   thread_wait(&wait_entry);
 }
 
@@ -175,6 +178,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   
   thread_tick ();
+
+  // Check wait list to see if any threads need to wake
   thread_check_wait();
 }
 
