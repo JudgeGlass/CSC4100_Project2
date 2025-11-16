@@ -1,0 +1,13 @@
+{
+  "editor.formatOnSave": false,
+  "files.associations": {
+    "thread.h": "c",
+    "ranges": "c",
+    "memory_resource": "c",
+    "numbers": "c",
+    "process.h": "c",
+    "array": "c",
+    "string_view": "c",
+    "initializer_list": "c"
+  }
+}

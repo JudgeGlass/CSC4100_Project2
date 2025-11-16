@@ -10,6 +10,7 @@ enum thread_status {
   THREAD_RUNNING, /* Running thread. */
   THREAD_READY,   /* Not running but ready to run. */
   THREAD_BLOCKED, /* Waiting for an event to trigger. */
+  THREAD_WAITING,
   THREAD_DYING    /* About to be destroyed. */
 };
 
@@ -18,7 +19,7 @@ enum thread_status {
 typedef int tid_t;
 #define TID_ERROR ((tid_t) - 1) /* Error value for tid_t. */
 
-/* Thread priorities. */
+/* Thread temp_priorities. */
 #define PRI_MIN 0      /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63     /* Highest priority. */
@@ -91,6 +92,11 @@ struct thread {
   /* Shared between thread.c and synch.c. */
   struct list_elem elem; /* List element. */
 
+  int temp_priorities[8];
+  int temp_priorities_size;
+  int num_donations;
+  struct lock *waiting_for;
+
 #ifdef USERPROG
   /* Owned by userprog/process.c. */
   uint32_t *pagedir; /* Page directory. */
@@ -98,6 +104,15 @@ struct thread {
 
   /* Owned by thread.c. */
   unsigned magic; /* Detects stack overflow. */
+};
+
+struct thread_wait_entry
+{
+   struct list_elem elem;
+   struct thread *thread;
+   int64_t tick_amount;
+   int64_t start_ticks;
+   int64_t end_ticks;
 };
 
 /* If false (default), use round-robin scheduler.
@@ -117,6 +132,9 @@ tid_t thread_create(const char *name, int priority, thread_func *, void *);
 void thread_block(void);
 void thread_unblock(struct thread *);
 
+void thread_wait(struct thread_wait_entry* wait_entry);
+void thread_check_wait(void);
+
 struct thread *thread_current(void);
 tid_t thread_tid(void);
 const char *thread_name(void);
@@ -135,5 +153,9 @@ int thread_get_nice(void);
 void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
+
+void thread_remove_temp_priority(struct thread *cur,int elem);
+bool thread_cmp_priority(struct list_elem *l1, struct list_elem *l2,void *aux);
+void thread_refresh_ready_list(void);
 
 #endif /* threads/thread.h */
